@@ -1,0 +1,27 @@
+# ── Raw data (CHB-MIT is NOT redistributed — download from PhysioNet) ──
+# no trailing slash → also ignores a `data/physionet` symlink, not just a real dir
+data/physionet
+data/*.edf
+
+# ── Feature caches (regenerated from the raw data; hundreds of MB) ──
+cache_*/
+cache/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+env*/
+
+# ── OS / editor ──
+.DS_Store
+.idea/
+.vscode/
+
+# ── Internal working notes (kept locally, not for public release) ──
+docs/AUDIT.md
+docs/THESIS_FIXES.md
+docs/VERIFIED_RESULTS.md

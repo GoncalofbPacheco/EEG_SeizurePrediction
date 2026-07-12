@@ -1,0 +1,7 @@
+method,auc_mean,auc_pr_mean,p_AUC_vs_V6,p_AUCPR_vs_V6
+V6 SVM (PDC),0.5664,0.4016,-,-
+V3 GC-CNN,0.5335,0.2316,0.4120,0.0003
+V4 LR (engineered),0.5244,0.1954,0.2290,0.0000
+V5b DANN,0.5436,0.195,0.6091,0.0000
+V4 XGB (engineered),0.5091,0.1809,0.1470,0.0000
+V4 RF (engineered),0.509,0.1783,0.1571,0.0000

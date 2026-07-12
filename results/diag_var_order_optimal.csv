@@ -1,0 +1,7 @@
+patient,class,best_p_AIC,best_p_BIC
+chb01,preictal,5,2
+chb01,interictal,10,5
+chb08,preictal,7,3
+chb08,interictal,7,3
+chb14,preictal,5,1
+chb14,interictal,5,1

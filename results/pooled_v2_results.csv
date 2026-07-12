@@ -1,0 +1,2 @@
+patient,auc,auc_pr,sensitivity,specificity,f1,balanced_accuracy,fpr_per_hour
+pooled_v2,0.8997,0.8132,0.8588,0.7668,0.7438,0.8128,83.9499

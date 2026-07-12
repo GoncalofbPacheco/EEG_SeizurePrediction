@@ -1,0 +1,7 @@
+protocol,auc,auc_pr,sensitivity,specificity,precision,f1,balanced_accuracy,fpr_per_hour,skill_mean,skill_std
+Within-patient LR  ← this notebook,0.5434,0.5198,0.5031,0.7047,0.632,0.4674,0.6039,106.3067,0.2677,0.3791
+Within-patient SVM  ← this notebook,0.5522,0.5149,0.6774,0.5402,0.529,0.532,0.6088,165.5334,0.258,0.3646
+Cross-patient LOPO SVM (V6),0.5664,0.4016,0.6199,0.5378,0.3735,0.4401,0.5789,166.3769,0.0908,0.14
+Cross-patient LOPO LR  (V6),0.5502,0.3895,0.4981,0.6336,0.3816,0.3734,0.5658,131.8977,0.0732,0.121
+Cross-patient LOPO V3 GC-CNN,0.5335,0.2316,0.2165,0.8218,,0.2011,0.5191,64.162,-0.2061,0.2455
+Cross-patient LOPO V4 LR,0.5244,0.1954,0.6826,0.4374,0.2082,0.2944,0.56,202.5332,-0.2708,0.2496

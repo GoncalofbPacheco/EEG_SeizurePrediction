@@ -1,0 +1,4 @@
+preictal_third,mean_AUC_PR,n
+early (far from onset),0.189,21
+middle,0.185,21
+late (near onset),0.193,21

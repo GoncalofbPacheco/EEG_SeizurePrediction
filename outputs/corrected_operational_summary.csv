@@ -1,0 +1,3 @@
+config,event_sensitivity,FPR_per_hour
+PDC LOPO — LR,0.447,1.17
+PDC LOPO — SVM,0.399,1.04

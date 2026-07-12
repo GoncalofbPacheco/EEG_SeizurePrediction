@@ -1,0 +1,2 @@
+patient_id,auc,auc_pr,sensitivity,specificity,precision,f1,balanced_accuracy,fpr_per_hour,threshold,n_preictal,n_interictal
+pooled,0.8928,0.8157,0.8264,0.7938,0.6779,0.7448,0.8101,74.25,0.5,2269,4320

@@ -1,0 +1,5 @@
+config,protocol,"FPR/h (WRONG, window-level, in thesis)","FPR/h (CORRECT, event-level)"
+Within-patient temporal — SVM,Within-patient temporal,146.3,0.242
+Within-patient temporal — LR,Within-patient temporal,102.2,0.295
+Cross-patient LOPO — SVM,Cross-patient LOPO,164.6,0.698
+Cross-patient LOPO — LR,Cross-patient LOPO,124.6,0.702
