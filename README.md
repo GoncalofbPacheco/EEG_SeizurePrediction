@@ -25,8 +25,8 @@ patient-calibrated regime remains the realistic deployment target.
 │   ├── granger.py           VAR(p) Granger-causality matrices
 │   ├── model.py             GC-CNN and DANN (PyTorch)
 │   ├── train_evaluate.py    LOPO training / evaluation helpers
-│   ├── metrics.py           original metrics  ── see note below ──
-│   ├── seizure_metrics.py   CORRECTED event-level metrics (use these)
+│   ├── metrics.py           window-level metrics  ── see note below ──
+│   ├── seizure_metrics.py   event-level metrics (use these)
 │   ├── seeds.py             reproducibility (global seed)
 │   └── alarm_postproc.py    smoothing + operational threshold selection
 │
@@ -87,14 +87,14 @@ are fast.
 
 ---
 
-## ⚠️ Two metrics modules — read this
+## Two metrics modules
 
-`src/metrics.py` is the **original** metrics code. Its false-prediction-rate and
-alarm "sensitivity" were computed at the **window level** (every false-positive
-10-second window counted as a separate alarm), which produced physically
-impossible rates of ~100–300 alarms/hour and a near-zero alarm sensitivity.
+`src/metrics.py` computes its false-prediction-rate and alarm "sensitivity" at the
+**window level** (every false-positive 10-second window counted as a separate
+alarm), which produces physically impossible rates of ~100–300 alarms/hour and a
+near-zero alarm sensitivity.
 
-`src/seizure_metrics.py` is the **corrected, event-level** implementation used in
+`src/seizure_metrics.py` is the **event-level** implementation used in
 `notebooks/03_corrections/`:
 
 * **Event sensitivity** = fraction of seizures with ≥1 alarm in their preictal
@@ -102,9 +102,9 @@ impossible rates of ~100–300 alarms/hour and a near-zero alarm sensitivity.
 * **FPR/h** = number of *distinct alarm events* in interictal time per interictal
   hour (≈0.2–1.4/h, not 100+).
 
-**Use `seizure_metrics.py` for any operational metric.** `metrics.py` is kept
-only so the original experiment notebooks reproduce as they were first run; the
-`03_corrections/` notebooks recompute every operational number at the event level.
+**Use `seizure_metrics.py` for any operational metric.** `metrics.py` is kept so
+the `01_experiments/` notebooks reproduce as first run; the `03_corrections/`
+notebooks recompute every operational number at the event level.
 
 ---
 

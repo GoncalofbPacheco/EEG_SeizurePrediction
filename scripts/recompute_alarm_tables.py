@@ -1,16 +1,16 @@
 """
 recompute_alarm_tables.py
 =========================
-Regenerate the corrected FPR/h numbers for thesis Tables 9 and 10 from the
-per-patient result CSVs that the original pipeline already produced.
+Regenerate the event-level FPR/h numbers for thesis Tables 9 and 10 from the
+per-patient result CSVs.
 
-The original pipeline (V6b, V8b) DID compute the correct event-level
-`fpr_h_alarm` column, but Tables 9 and 10 quoted the WRONG `fpr_h_window`
+The V6b and V8b pipelines already computed the correct event-level
+`fpr_h_alarm` column, but Tables 9 and 10 quoted the window-level `fpr_h_window`
 column (window-level FP count), yielding the impossible 106-166 alarms/hour.
 
 This script reads the existing `results/lopo_v6b_compare_*.csv` and
 `results/lopo_v8b_compare_*.csv` files, contrasts the window-level and
-event-level columns, and writes a corrected comparison table.
+event-level columns, and writes a comparison table.
 
 Run:
     python recompute_alarm_tables.py

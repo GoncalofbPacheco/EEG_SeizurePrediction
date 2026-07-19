@@ -1,32 +1,27 @@
 """
-seizure_metrics.py  — CORRECTED event-level seizure-prediction metrics
-======================================================================
+seizure_metrics.py — event-level seizure-prediction metrics
+===========================================================
 
-This module fixes the single most important coding error in the thesis:
-the False-Prediction-Rate per hour (FPR/h) — and, relatedly, the alarm
-sensitivity — were reported at the WINDOW level instead of the EVENT
-(alarm) level.
+Operational seizure-prediction metrics must be measured at the level of
+discrete ALARMS, not individual windows. This module computes event-level
+sensitivity and false-prediction-rate per hour (FPR/h), the numbers reported in
+the final tables.
 
-WHY THE OLD NUMBERS WERE WRONG
-------------------------------
-With 20-second windows and 50% overlap the step is 10 s, i.e. 360 windows
-per hour. The old code counted *every* false-positive 10-second window as a
-separate "false prediction":
+Window level vs event level
+---------------------------
+With 20-second windows and 50 % overlap the step is 10 s, i.e. 360 windows per
+hour. Counting every false-positive window as a separate false prediction,
 
     fp = ((y_pred == 1) & (y_true == 0)).sum()      # window-level FP count
     fpr_h = fp / interictal_hours
 
-Because the classifiers sit near AUC 0.5, roughly 30-50% of interictal
-windows cross the threshold, so this produced FPR/h values of 100-360 —
-i.e. "more than one false alarm every minute". That is physically
-meaningless for a seizure-warning device and is exactly what the supervisor
-flagged ("You can have 100+ false alarms per hour!! ... maybe it is a
-calculation problem"). It IS a calculation problem.
+is not meaningful for a warning device: near AUC 0.5, roughly 30-50 % of
+interictal windows cross the threshold, giving FPR/h values of 100-360 — more
+than one "alarm" per minute.
 
-THE CORRECT DEFINITION (Truong et al. 2018; Mormann et al. 2007)
-----------------------------------------------------------------
-A seizure-prediction system raises discrete ALARMS, not per-window flags.
-The pipeline is:
+Correct definition (Truong et al. 2018; Mormann et al. 2007)
+------------------------------------------------------------
+A seizure-prediction system raises discrete ALARMS, not per-window flags:
 
     raw P(preictal) per window
         -> threshold                       (per-window 0/1)
@@ -44,16 +39,11 @@ From the alarm times, the two clinically meaningful numbers are:
                           (total interictal hours)
                          -- "how many false alarms per hour of normal EEG?"
 
-With a 30-minute (180-window) refractory period the maximum possible FPR/h
-is ~2, so a correct implementation can never report 100+.
+With a 30-minute (180-window) refractory period the maximum possible FPR/h is
+~2, so an event-level implementation can never report 100+.
 
-The threshold-free metrics AUC and AUC-PR are unchanged; they are computed
-on the raw per-window probabilities and are the primary evidence in the
-thesis. Only the operational Sensitivity/FPR/h pair changes.
-
-This module supersedes `metrics.compute_fpr_per_hour`,
-`metrics.evaluate_with_alarms` (window-denominator sensitivity) and the
-`fpr_h_window`/`sens_window` columns that leaked into Tables 9 and 10.
+AUC and AUC-PR are threshold-free and unchanged; they are computed on the raw
+per-window probabilities. Only the operational Sensitivity/FPR/h pair changes.
 """
 from __future__ import annotations
 

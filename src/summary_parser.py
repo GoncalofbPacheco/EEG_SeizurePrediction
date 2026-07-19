@@ -1,21 +1,18 @@
 """
-summary_parser.py  (V3 — added timeline reconstruction + clean interictal filter)
-==================================================================================
+summary_parser.py
+=================
 Parses CHB-MIT per-patient summary files (*-summary.txt).
 
-Original functions (unchanged):
-  parse_summary()          — seizure map for one patient
-  parse_all_summaries()    — seizure maps for all patients
+  parse_summary()               — seizure map for one patient
+  parse_all_summaries()         — seizure maps for all patients
   get_seizure_containing_files()
-
-New functions (V3 Option B):
   parse_summary_with_times()    — full file timeline with absolute timestamps
   get_clean_interictal_files()  — files that are ≥ N hours from any seizure
 
-Why this matters
-----------------
+Timeline reconstruction
+-----------------------
 CHB-MIT summary files include "File Start Time" and "File End Time" for every
-EDF. By reconstructing the absolute timeline we can apply a temporal distance
+EDF. Reconstructing the absolute timeline lets us apply a temporal distance
 criterion for interictal selection — the standard in the prediction literature
 (e.g. ≥4h before and ≥4h after any seizure) instead of using all non-seizure
 files blindly, which would include post-ictal and pre-ictal recordings.
@@ -180,7 +177,7 @@ def get_seizure_containing_files(patient_seizure_map: SeizureMap) -> List[str]:
     return list(patient_seizure_map.keys())
 
 
-# ── V3: Timeline reconstruction ───────────────────────────────────────────────
+# ── Timeline reconstruction ───────────────────────────────────────────────────
 
 def _parse_hhmmss(t: str) -> float:
     """
@@ -298,7 +295,7 @@ def parse_summary_with_times(patient_dir: str) -> FileTimeline:
     return timeline
 
 
-# ── V3: Clean interictal file selector ───────────────────────────────────────
+# ── Clean interictal file selector ────────────────────────────────────────────
 
 def get_clean_interictal_files(
     timeline:         FileTimeline,

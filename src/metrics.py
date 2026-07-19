@@ -1,24 +1,18 @@
 """
-metrics.py  (V3 — FIX 3 & 4: alarm-level post-processing)
-===========================================================
-New additions vs original:
-  apply_alarm_postprocessing()  — sliding-window vote + refractory period
-  evaluate_with_alarms()        — full metric suite at alarm level
+metrics.py
+==========
+Window-level classification metrics and alarm-level post-processing for the
+GC-CNN experiments.
 
-The original code classified every 10-second window independently.
-With AUC ≈ 0.5 (near random) about half of interictal windows are labelled
-preictal → FPR/h ≈ 90–270. The fixes below suppress this by:
+Threshold-free metrics (AUC-ROC, AUC-PR) are computed on the raw per-window
+probabilities. Operational metrics can be reported either per window
+(``evaluate_predictions``) or after alarm post-processing
+(``evaluate_with_alarms``), which applies a K-of-M sliding-window vote and a
+refractory period so that a run of positive windows counts as a single clinical
+alarm rather than one alarm per 10-second window.
 
-  FIX 3 — Sliding-window voting (ALARM_M, ALARM_K from config):
-           An alarm fires only when ≥ K of the last M windows are positive.
-           Default: 8 of 12 (2-minute window) → reduces isolated false positives.
-
-  FIX 4 — Refractory period (ALARM_REFRACTORY from config):
-           After an alarm fires, the next 180 windows (30 min) are suppressed.
-           This models clinical alarm systems that don't re-alarm during a seizure.
-
-All original functions (evaluate_predictions, find_optimal_threshold, etc.)
-are preserved unchanged so existing notebooks continue to work.
+For the event-level operational metrics used in the final tables (§Corrected
+metrics in the README), see ``seizure_metrics.py``.
 """
 
 from typing import Optional, Dict
@@ -34,7 +28,7 @@ from config import STEP_SEC, ALARM_K, ALARM_M, ALARM_REFRACTORY
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Primitive metric functions (unchanged from original)
+# Primitive metric functions
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _threshold_preds(probs: np.ndarray, threshold: float = 0.5) -> np.ndarray:
@@ -85,7 +79,7 @@ def compute_fpr_per_hour(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Original evaluate_predictions (window-level, unchanged)
+# Window-level evaluation
 # ─────────────────────────────────────────────────────────────────────────────
 
 def evaluate_predictions(
@@ -96,7 +90,7 @@ def evaluate_predictions(
     patient_id:  str = "",
 ) -> Dict[str, float]:
     """
-    Window-level metrics (original function, unchanged).
+    Window-level metrics.
     Use evaluate_with_alarms() for the alarm-level post-processed version.
     """
     y_pred = _threshold_preds(probs, threshold)
@@ -137,7 +131,7 @@ def evaluate_predictions(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FIX 3 & 4: Alarm-level post-processing
+# Alarm-level post-processing
 # ─────────────────────────────────────────────────────────────────────────────
 
 def apply_alarm_postprocessing(
@@ -198,7 +192,7 @@ def evaluate_with_alarms(
     patient_id:          str           = "",
 ) -> Dict[str, float]:
     """
-    Full evaluation with alarm-level post-processing (FIX 3 & 4).
+    Full evaluation with alarm-level post-processing.
 
     AUC-ROC and AUC-PR are computed at window level (threshold-independent).
     All other metrics (Sensitivity, Specificity, F1, FPR/h) use alarm_pred.
@@ -225,7 +219,6 @@ def evaluate_with_alarms(
         auc    = roc_auc_score(y_true, probs)
         auc_pr = average_precision_score(y_true, probs)
 
-    # Alarm-level predictions
     alarm_pred = apply_alarm_postprocessing(
         probs, threshold, K, M, refractory_windows
     )
@@ -262,7 +255,7 @@ def evaluate_with_alarms(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Threshold optimisation (unchanged from original)
+# Threshold optimisation
 # ─────────────────────────────────────────────────────────────────────────────
 
 def find_optimal_threshold(

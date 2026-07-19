@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-extract_allfiles.py  -  Path B feature extraction, run from the TERMINAL.
+extract_allfiles.py  -  All-files feature extraction, run from the TERMINAL.
 
 Why a script and not a notebook cell: the all-files extraction runs for hours,
 and VS Code / Jupyter drops long-running kernels ("notebook controller is

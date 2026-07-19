@@ -1,14 +1,18 @@
 """
-train_evaluate.py  (V3)
-=======================
-All original V1 functions are preserved unchanged.
-New additions:
-  run_lopo_v3()   — LOPO with all V2 improvements + alarm post-processing
-  run_pooled_v3() — pooled baseline with alarm post-processing
+train_evaluate.py
+=================
+Training and Leave-One-Patient-Out (LOPO) evaluation helpers for the GC-CNN.
 
-The key addition in run_lopo_v3 is that after model inference we call
-evaluate_with_alarms() instead of evaluate_predictions(), applying the
-sliding-window vote (FIX 3) and refractory period (FIX 4).
+Two training regimes are provided:
+  train_model()        — weighted binary cross-entropy, window-level evaluation.
+  train_model_focal()  — binary focal loss, exponential LR decay and an optional
+                         per-patient balanced sampler.
+
+and two LOPO drivers:
+  run_lopo()        — window-level evaluation.
+  run_lopo_alarm()  — event-level evaluation: after inference it calls
+                      evaluate_with_alarms() (K-of-M sliding-window vote plus
+                      refractory period) instead of evaluate_predictions().
 """
 
 import random
@@ -46,7 +50,7 @@ def get_device() -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# ── Loss: Binary Focal Loss (V2 improvement) ─────────────────────────────────
+# ── Loss: Binary Focal Loss ──────────────────────────────────────────────────
 
 class BinaryFocalLoss(nn.Module):
     """FL(p_t) = −α·(1−p_t)^γ·log(p_t)   with class-frequency α."""
@@ -69,7 +73,7 @@ class BinaryFocalLoss(nn.Module):
         return (alpha * (1 - pt) ** self.gamma * bce).mean()
 
 
-# ── Balanced sampler (V2 improvement) ────────────────────────────────────────
+# ── Balanced sampler ─────────────────────────────────────────────────────────
 
 def make_balanced_sampler(
     patient_counts:  List[int],
@@ -88,9 +92,9 @@ def make_balanced_sampler(
     return WeightedRandomSampler(weights, num_samples=n_samples, replacement=True)
 
 
-# ── V3 training (focal loss + LR decay + balanced sampler) ───────────────────
+# ── Training: focal loss + LR decay + balanced sampler ───────────────────────
 
-def train_model_v3(
+def train_model_focal(
     train_matrices: np.ndarray,
     train_labels:   np.ndarray,
     val_matrices:   np.ndarray,
@@ -103,7 +107,7 @@ def train_model_v3(
     verbose:        bool  = True,
 ) -> GCPredictor:
     """
-    Train GCPredictor with V2/V3 improvements:
+    Train GCPredictor with:
       - Binary Focal Loss
       - ExponentialLR decay (×0.90 / epoch)
       - Optional per-patient balanced sampler
@@ -196,9 +200,9 @@ def predict(
     return np.concatenate(probs)
 
 
-# ── LOPO V3 (all fixes integrated) ───────────────────────────────────────────
+# ── LOPO with alarm post-processing ──────────────────────────────────────────
 
-def run_lopo_v3(
+def run_lopo_alarm(
     patient_data:    Dict[str, Tuple[np.ndarray, np.ndarray]],
     val_fraction:    float = 0.15,
     max_win_per_pat: int   = 600,
@@ -208,7 +212,7 @@ def run_lopo_v3(
     verbose:         bool  = True,
 ) -> Tuple[Dict[str, dict], Dict[str, dict]]:
     """
-    Leave-One-Patient-Out cross-validation with all V3 fixes.
+    Leave-One-Patient-Out cross-validation with alarm-level post-processing.
 
     Returns
     -------
@@ -221,10 +225,9 @@ def run_lopo_v3(
     alarm_results:  Dict[str, dict] = {}
 
     print(f"\n{'='*62}")
-    print(f"LOPO V3  ({len(pids)} folds)  |  device: {device}")
-    print(f"  FIX 1: all EDFs loaded   FIX 2: VAR({5}) GC matrices")
-    print(f"  FIX 3: alarm voting K={alarm_K}/M={alarm_M}")
-    print(f"  FIX 4: refractory {alarm_refractory} windows ({alarm_refractory*10//60} min)")
+    print(f"LOPO (event-level)  ({len(pids)} folds)  |  device: {device}")
+    print(f"  alarm vote: K={alarm_K}/M={alarm_M}   "
+          f"refractory: {alarm_refractory} windows ({alarm_refractory*10//60} min)")
     print(f"{'='*62}")
 
     for fold_idx, test_pid in enumerate(pids, 1):
@@ -268,7 +271,7 @@ def run_lopo_v3(
               f"Val={len(y_va)}  "
               f"Test={len(y_te)} (pre={(y_te==1).sum()})")
 
-        model  = train_model_v3(
+        model  = train_model_focal(
             X_tr, y_tr, X_va, y_va, device,
             patient_counts=train_counts,
             max_win_per_pat=max_win_per_pat,
@@ -278,7 +281,7 @@ def run_lopo_v3(
 
         # Window-level metrics (keeps AUC for comparison)
         w_met = evaluate_predictions(y_te, probs, patient_id=test_pid)
-        # Alarm-level metrics (FIX 3 & 4)
+        # Alarm-level metrics
         a_met = evaluate_with_alarms(
             y_te, probs,
             K=alarm_K, M=alarm_M, refractory_windows=alarm_refractory,
@@ -299,7 +302,7 @@ def run_lopo_v3(
     return window_results, alarm_results
 
 
-# ── Original V1 functions (preserved unchanged) ───────────────────────────────
+# ── Baseline trainer and evaluation (weighted BCE, window-level) ─────────────
 
 def train_model(
     train_matrices: np.ndarray,
@@ -309,7 +312,7 @@ def train_model(
     device:         torch.device,
     verbose:        bool = True,
 ) -> GCPredictor:
-    """Original V1 trainer (weighted BCE, no decay, no sampler)."""
+    """Baseline trainer (weighted BCE, no LR decay, no sampler)."""
     from model import build_weighted_bce
     set_seed()
 
@@ -370,13 +373,13 @@ def run_lopo(
     val_fraction: float = 0.15,
     verbose:      bool  = True,
 ) -> Dict[str, dict]:
-    """Original V1 LOPO (window-level evaluation, weighted BCE)."""
+    """Baseline LOPO (window-level evaluation, weighted BCE)."""
     device = get_device()
     pids   = list(patient_data.keys())
     results: Dict[str, dict] = {}
 
     print(f"\n{'='*60}")
-    print(f"LOPO V1  ({len(pids)} folds)  |  device: {device}")
+    print(f"LOPO (window-level)  ({len(pids)} folds)  |  device: {device}")
     print(f"{'='*60}")
 
     for fold_idx, test_pid in enumerate(pids, 1):
@@ -415,7 +418,7 @@ def run_pooled(
     val_fraction:  float = 0.15,
     verbose:       bool  = True,
 ) -> dict:
-    """Original V1 pooled evaluation."""
+    """Pooled evaluation (single random split across all patients)."""
     device = get_device()
     all_X  = np.concatenate([v[0] for v in patient_data.values()])
     all_y  = np.concatenate([v[1] for v in patient_data.values()])
@@ -429,7 +432,7 @@ def run_pooled(
     train_idx = idx[n_test + n_val :]
 
     print(f"\n{'='*60}")
-    print(f"Pooled V1  |  device: {device}")
+    print(f"Pooled  |  device: {device}")
     print(f"  Train: {len(train_idx)}  Val: {len(val_idx)}  Test: {len(test_idx)}")
     print(f"{'='*60}")
 

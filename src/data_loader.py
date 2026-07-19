@@ -17,7 +17,7 @@ from typing import List, Tuple, Optional
 import numpy as np
 import mne
 
-mne.set_log_level("WARNING")   # suppress MNE info spam
+mne.set_log_level("WARNING")   # silence MNE INFO logging
 
 from config import CANONICAL_CHANNELS, FS, N_CHANNELS
 

@@ -1,11 +1,10 @@
 """
 seeds.py — reproducibility control for the stochastic classifiers.
 
-Addresses supervisor comment 120 ("Aren't these stochastic? How do you deal
-with?"). Random Forest, XGBoost, the DANN and the CNNs are all stochastic
-(bootstrap sampling, column subsampling, weight init, dropout, mini-batch
-order). Without a fixed seed each LOPO run yields slightly different numbers,
-so reported means are not reproducible and per-patient comparisons are noisy.
+Random Forest, XGBoost, the DANN and the CNNs are all stochastic (bootstrap
+sampling, column subsampling, weight init, dropout, mini-batch order). Without a
+fixed seed each LOPO run yields slightly different numbers, so reported means are
+not reproducible and per-patient comparisons are noisy.
 
 Call ``set_global_seed(seed)`` once at the top of every notebook/experiment,
 and pass ``random_state=seed`` to every scikit-learn / xgboost estimator.

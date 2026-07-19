@@ -1,8 +1,8 @@
 """
-self_test.py — sanity checks proving the corrected metrics behave sensibly.
+self_test.py — sanity checks for the event-level metrics.
 
-Demonstrates the core bug fix: under the refractory rule, FPR/h is physically
-bounded, whereas the old window-level count is not.
+Under the refractory rule, FPR/h is physically bounded, whereas the window-level
+count is not.
 """
 import os
 import sys
@@ -23,17 +23,17 @@ K, M, REFRACTORY = 5, 12, 180  # thesis alarm params (30-min refractory)
 
 
 def test_fpr_is_bounded_by_refractory():
-    """Even with EVERY window positive, FPR/h cannot exceed ~2 with a 30-min
-    refractory. The old window-level count would report 360/h here."""
+    """Even with every window positive, FPR/h cannot exceed ~2 with a 30-min
+    refractory. A window-level count would report 360/h here."""
     n = 360 * 3  # 3 hours of interictal at 10 s step
-    probs = np.ones(n)  # worst case: model screams preictal on every window
+    probs = np.ones(n)  # worst case: model predicts preictal on every window
     y_true = np.zeros(n, dtype=int)  # all interictal
     alarms = generate_alarms(probs, 0.5, K, M, REFRACTORY)
     fpr_h = false_alarms_per_hour(alarms, y_true, STEP_SEC)
     old_window_count = ((probs >= 0.5) & (y_true == 0)).sum() / (n * STEP_SEC / 3600)
-    print(f"  worst-case corrected FPR/h = {fpr_h:.2f}  (old window-level = {old_window_count:.1f})")
+    print(f"  worst-case event-level FPR/h = {fpr_h:.2f}  (window-level = {old_window_count:.1f})")
     assert fpr_h <= 2.1, fpr_h
-    assert old_window_count > 300  # the bug reproduced
+    assert old_window_count > 300  # window-level count is unbounded
 
 
 def test_event_sensitivity():

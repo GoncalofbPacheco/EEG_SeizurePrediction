@@ -1,11 +1,9 @@
 """
 patient_correlation.py
 ======================
-Supervisor comment 167: "Does cross-patient AUC-PR correlate with any
+Tests whether the per-patient cross-patient LOPO AUC-PR correlates with any
 recorded patient property (seizure count, age, average seizure duration in
-Table 2)? Could be a nice extra result."
-
-Also supports comment 141/156 ("investigate which cases perform poorly").
+thesis Table 2), and flags the poorest-performing patients.
 
 Correlates the per-patient LOPO AUC-PR of the best configuration
 (PDC VAR(20), SVM, all bands = lopo_v6_SVM_all_bands.csv) against the
@@ -104,7 +102,7 @@ for p in props:
         ys.append(float(r["auc_pr"]))
     corr[p] = (pearson(xs, ys), len(xs))
 
-# Poorly performing cases (comment 141/156)
+# Poorly performing cases
 poor = sorted(rows, key=lambda r: r["auc_pr"])[:5]
 
 csv_path = os.path.join(OUT, "patient_correlation.csv")

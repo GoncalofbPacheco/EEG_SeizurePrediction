@@ -1,36 +1,30 @@
 """
-granger.py  (V3 — FIX 2: VAR(p) instead of VAR(1))
-=====================================================
-Original VAR(1) problem
-------------------------
-The original code estimated A = Σ₁ · Σ₀⁻¹ — a one-lag approximation.
-At 256 Hz this captures only ~4 ms of history, which is shorter than a single
-EEG oscillation cycle (e.g. alpha at 10 Hz has a 100 ms period).
-The resulting 18×18 matrix carries almost no frequency-domain information
-about preictal activity, explaining why AUC ≈ 0.5.
+granger.py
+==========
+VAR(p) Granger-causality connectivity matrices for EEG windows (thesis §3.3).
 
-VAR(p) fix
-----------
-We now fit a proper order-p VAR model via OLS:
+An order-p vector-autoregressive model is fitted per window via OLS:
 
     X(t) = A₁·X(t-1) + A₂·X(t-2) + ... + Aₚ·X(t-p) + ε(t)
 
-With GC_ORDER = 5 the model captures up to 5 × (1/256 s) ≈ 20 ms of
-directed influence — enough to encode alpha/theta band coupling.
+With GC_ORDER = 5 the model captures up to 5 × (1/256 s) ≈ 20 ms of directed
+influence, enough to encode alpha/theta band coupling. A one-lag VAR(1) would
+capture only ~4 ms — shorter than a single oscillation cycle — and carry almost
+no frequency-domain information about preictal activity.
 
 Output GC matrix
------------------
-We output the element-wise sum of absolute lag matrices:
+----------------
+The element-wise sum of absolute lag matrices,
 
-    A_total = |A₁| + |A₂| + ... + |Aₚ|   (shape 18×18)
+    A_total = |A₁| + |A₂| + ... + |Aₚ|   (shape 18×18),
 
-This preserves backward compatibility with the CNN (still one 18×18 channel)
-while encoding the total directed influence across all lags.
+gives a single 18×18 channel for the CNN while encoding the total directed
+influence across all lags.
 
 Caching
 -------
-V3 uses GC_MATRICES_DIR_V3 = "cache_gc_var5" so old VAR(1) caches are
-never accidentally loaded.
+Matrices are cached under GC_MATRICES_DIR (cache_gc_var5) so they are computed
+once and reloaded thereafter.
 """
 
 import os
@@ -39,7 +33,7 @@ from typing import Tuple, Optional
 
 import numpy as np
 
-from config import N_CHANNELS, GC_MATRICES_DIR_V3, GC_ORDER
+from config import N_CHANNELS, GC_MATRICES_DIR, GC_ORDER
 
 
 # ── Core VAR(p) estimation ────────────────────────────────────────────────────
@@ -149,12 +143,12 @@ def compute_gc_matrices(
     return gc_matrices, valid_mask
 
 
-# ── Disk caching (V3 uses cache_gc_var5/) ─────────────────────────────────────
+# ── Disk caching ──────────────────────────────────────────────────────────────
 
 def _cache_path(
     patient_id: str,
     fname:      str,
-    cache_dir:  str = GC_MATRICES_DIR_V3,
+    cache_dir:  str = GC_MATRICES_DIR,
 ) -> Path:
     stem = fname.replace(".edf", "")
     return Path(cache_dir) / patient_id / f"{stem}_gc.npy"
@@ -163,7 +157,7 @@ def _cache_path(
 def _labels_cache_path(
     patient_id: str,
     fname:      str,
-    cache_dir:  str = GC_MATRICES_DIR_V3,
+    cache_dir:  str = GC_MATRICES_DIR,
 ) -> Path:
     stem = fname.replace(".edf", "")
     return Path(cache_dir) / patient_id / f"{stem}_labels.npy"
@@ -172,7 +166,7 @@ def _labels_cache_path(
 def cache_exists(
     patient_id: str,
     fname:      str,
-    cache_dir:  str = GC_MATRICES_DIR_V3,
+    cache_dir:  str = GC_MATRICES_DIR,
 ) -> bool:
     return (
         _cache_path(patient_id, fname, cache_dir).exists()
@@ -185,7 +179,7 @@ def save_gc_cache(
     labels:      np.ndarray,
     patient_id:  str,
     fname:       str,
-    cache_dir:   str = GC_MATRICES_DIR_V3,
+    cache_dir:   str = GC_MATRICES_DIR,
 ) -> None:
     cp = _cache_path(patient_id, fname, cache_dir)
     lp = _labels_cache_path(patient_id, fname, cache_dir)
@@ -197,7 +191,7 @@ def save_gc_cache(
 def load_gc_cache(
     patient_id: str,
     fname:      str,
-    cache_dir:  str = GC_MATRICES_DIR_V3,
+    cache_dir:  str = GC_MATRICES_DIR,
 ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     cp = _cache_path(patient_id, fname, cache_dir)
     lp = _labels_cache_path(patient_id, fname, cache_dir)
@@ -212,7 +206,7 @@ def process_file_to_gc(
     patient_id: str  = "",
     fname:      str  = "",
     use_cache:  bool = True,
-    cache_dir:  str  = GC_MATRICES_DIR_V3,
+    cache_dir:  str  = GC_MATRICES_DIR,
     verbose:    bool = True,
     p:          int  = GC_ORDER,
 ) -> Tuple[np.ndarray, np.ndarray]:

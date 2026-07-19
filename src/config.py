@@ -1,14 +1,8 @@
 """
-config.py  (V3.1 — imbalance bug fixed)
-=========================================
-Changes vs original:
-  FIX 2  — GC_ORDER raised from 1 → 5  (captures multi-lag EEG dynamics)
-  FIX 1  — INTERICTAL_MULTIPLIER: per-patient proportional cap (5× preictal)
-            replaces the old fixed MAX_INTERICTAL_PER_PATIENT = 15 000.
-            A fixed cap created 1:44 ratios; a multiplier guarantees 1:5 for
-            every patient regardless of how many preictal windows they have.
-  FIX 3/4 — ALARM_K, ALARM_M, ALARM_REFRACTORY (sliding-window alarm logic)
-  NEW    — GC_MATRICES_DIR_V3 separate cache so old VAR(1) cache is never reused
+config.py
+=========
+Central configuration: dataset location, montage, signal-processing,
+segmentation, labelling, model and alarm-post-processing constants.
 
 Paths are resolved relative to the repository root (the parent of this src/
 folder) so the project is portable across machines. To point at the CHB-MIT
@@ -72,10 +66,11 @@ SPH_SEC            =  5 * 60   #   300 s — seizure prediction horizon
 POSTICTAL_EXCL_SEC = 30 * 60   # 1 800 s — post-ictal exclusion buffer
 
 # ── Granger causality ─────────────────────────────────────────────────────────
-# FIX 2: Raised from 1 → 5.
-# VAR(1) only captures 1-step (≈4 ms) autocorrelation — almost no seizure signal.
-# VAR(5) captures dynamics up to 5 * (1/256) ≈ 20 ms, which covers the
-# theta/alpha band oscillatory cycles most relevant to preictal activity.
+# VAR model order. At 256 Hz, VAR(1) captures only ~4 ms of history — shorter
+# than a single EEG oscillation cycle (alpha at 10 Hz has a 100 ms period), so
+# it encodes almost no frequency-domain preictal information. Order 5 spans
+# 5 × (1/256) ≈ 20 ms, covering the theta/alpha band coupling most relevant to
+# preictal activity.
 GC_ORDER = 5
 
 # ── Model ─────────────────────────────────────────────────────────────────────
@@ -90,43 +85,28 @@ RANDOM_SEED   = 42
 # Feature caches live at the repository root as cache_<name>/ and are git-ignored
 # (regenerated from the raw data — see the top-level README). Notebooks build the
 # same paths as Path(CODE_DIR) / "cache_<name>".
-GC_MATRICES_DIR    = str(PROJECT_ROOT / "cache_gc_var1")   # obsolete VAR(1) cache — do not reuse
-GC_MATRICES_DIR_V3 = str(PROJECT_ROOT / "cache_gc_var5")   # VAR(5) cache used by V3/V4
-RESULTS_DIR        = str(PROJECT_ROOT / "results")
+GC_MATRICES_DIR = str(PROJECT_ROOT / "cache_gc_var5")   # VAR(5) Granger-causality cache
+RESULTS_DIR     = str(PROJECT_ROOT / "results")
 
-# ── FIX 1: Per-patient proportional interictal cap ───────────────────────────
-#
-# BUG in V3.0: MAX_INTERICTAL_PER_PATIENT = 15 000 (fixed number) created
-# a 1:44 ratio for patients with only 296 preictal windows, and only 1:5 for
-# chb24 which had 939. The fixed cap interacted badly with the balanced sampler:
-#
-#   training batches → balanced (sampler oversamples preictal)  → loss ≈ 0.017
-#   validation set   → 1:19 true distribution                   → loss ≈ 0.268
-#   early stopping   → fires on inflated val loss → model undertrained
-#
-# FIX: cap interictal at INTERICTAL_MULTIPLIER × n_preictal per patient.
-# With multiplier = 5, every patient has a 1:5 ratio regardless of seizure count.
-# This makes train loss and val loss computed on comparable distributions,
-# so early stopping behaves correctly.
-#
-# Result from data:  total interictal drops from 225 243 → ~54 540 (1:5 ratio)
+# ── Class-imbalance handling ──────────────────────────────────────────────────
+# Cap interictal windows at INTERICTAL_MULTIPLIER × n_preictal per patient, so
+# every patient keeps the same preictal:interictal ratio regardless of seizure
+# count. A fixed absolute cap gives patients with few preictal windows a far more
+# skewed ratio than patients with many; with a proportional cap the training and
+# validation sets share comparable class distributions, which keeps the balanced
+# sampler and early stopping well behaved.
 INTERICTAL_MULTIPLIER = 5       # interictal = min(available, 5 × preictal)
-MAX_INTERICTAL_ABS    = 5_000   # hard ceiling per patient (prevents chb06 from dominating)
+MAX_INTERICTAL_ABS    = 5_000   # hard ceiling per patient
 
-# ── FIX 3 & 4: Alarm-level post-processing ────────────────────────────────────
-# Instead of treating each 10-second window as an independent alarm:
-#   1. Sliding-window vote: fire alarm only if ≥ ALARM_K of the last ALARM_M
+# ── Alarm-level post-processing ───────────────────────────────────────────────
+# Rather than treating each 10-second window as an independent alarm:
+#   1. Sliding-window vote: fire an alarm only if ≥ ALARM_K of the last ALARM_M
 #      windows are predicted positive.
 #   2. Refractory period: after an alarm fires, suppress the next
-#      ALARM_REFRACTORY windows (30 min = 180 × 10-second steps).
-#
-# Default parameters (can be tuned):
-#   ALARM_M = 12  → 2-minute voting window
-#   ALARM_K =  5  → 5/12 threshold (≈ 42 %) — lowered from 8 because at
-#                   AUC ≈ 0.53 the original K=8 almost never fires (sensitivity ≈ 0).
-#                   K=5 gives the alarm a chance to fire while still suppressing
-#                   isolated single-window false positives.
-#   ALARM_REFRACTORY = 180 → 30-minute refractory period
+#      ALARM_REFRACTORY windows (30 min = 180 × 10-second steps), so a seizure
+#      does not trigger repeated alarms.
+# ALARM_K = 5 of ALARM_M = 12 (≈42 %) fires often enough to catch seizures while
+# still suppressing isolated single-window false positives.
 ALARM_K           = 5    # minimum positives in window to fire alarm
 ALARM_M           = 12   # sliding-window size (windows)
 ALARM_REFRACTORY  = 180  # refractory period (windows)

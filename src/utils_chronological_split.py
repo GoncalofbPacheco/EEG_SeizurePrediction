@@ -1,30 +1,28 @@
 """
 utils_chronological_split.py
 ============================
-Drop-in replacement for random train/val splits in LOPO training.
+Chronological (position-based) train/val split for LOPO training, in place of a
+random split.
 
-Why this exists
----------------
-V1/V2/V3 used `sklearn.train_test_split(..., shuffle=True)` to carve a
-validation subset from the LOPO training pool. With 50%-overlap 20-second
-windows, consecutive windows are correlated:
+Why this matters
+----------------
+With 50 %-overlap 20-second windows, consecutive windows are correlated:
 
     window i   covers [t,      t+20s]
     window i+1 covers [t+10s,  t+30s]
 
 A random split places windows i and i+1 on opposite sides of the train/val
-boundary half the time, so the model sees nearly-identical samples in both
-sets. This inflates validation performance (and hence corrupts early-stopping
-and HP selection) without affecting LOPO test performance — which is why
-V2's val_loss ≈ 0.27 looked plausible even as LOPO AUC stayed at 0.52.
-
-Supervisor Ian Scott (4/9/26): "As time series I think it needs to be chrono."
+boundary half the time, so the model sees nearly-identical samples in both sets.
+This inflates validation performance — corrupting early stopping and
+hyper-parameter selection — without affecting LOPO test performance, so a random
+split can show a plausible validation loss even when LOPO AUC stays near chance.
+As a time series, the validation subset must respect chronological order.
 
 What this does
 --------------
 For each training-pool patient, split that patient's chronologically-ordered
-window array into [train | val] by position, NOT randomly. The patient_data
-arrays produced by the V3 cache loader are already in file-load order
+window array into [train | val] by position, not randomly. The patient_data
+arrays produced by the cache loader are already in file-load order
 (`sorted(glob)`), which is approximately chronological within a patient
 (CHB-MIT file numbers increase monotonically with recording session).
 
@@ -98,7 +96,7 @@ def lopo_train_val_split(
     Parameters
     ----------
     patient_data : dict   {pid: (X, y)} — X must be chronologically ordered
-                          within each patient (V3 loader already produces this)
+                          within each patient (the cache loader already does this)
     test_pid     : str    patient to hold out for testing
     val_fraction : float  fraction of each training patient to set aside for val
     stratify_within_patient : bool
@@ -159,7 +157,7 @@ def patient_chronological_split(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Patient-specific chronological split (for within-patient experiments only).
-    Use this for the Patient-Specific configuration in Main_V2, not for LOPO.
+    Use this for the patient-specific configuration, not for LOPO.
     """
     return _chronological_split_one_patient(X, y, val_fraction, stratify)
 
@@ -183,4 +181,4 @@ if __name__ == "__main__":
     )
     assert len(X_tr) == sum(counts)
     assert len(X_va) > 0
-    print("\nChronological split sanity test passed ✓")
+    print("\nChronological split sanity test passed.")
